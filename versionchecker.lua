@@ -53,20 +53,20 @@ local function checkVersion()
                                 print("  Changelog: " .. data.changelog)
                                 print("  Date: " .. data.date)
                             else
-                                print("Error: Invalid update details format.")
+                                print("^1Error: Invalid update details format.^0")
                             end
                         else
-                            print("Error: Failed to retrieve update details. HTTP Status Code: " .. updateStatusCode)
+                            print("^1Error: Failed to retrieve update details. HTTP Status Code: " .. updateStatusCode .. "^0")
                         end
                     end, "GET", "", {["Content-Type"] = "application/json"})
                 else
-                    print("[MyScripts Updater] -- You are using the latest version of " .. scriptname .. ". and are up to date!")
+                    print("^4[MyScripts Updater]^0 | ^2You are using the latest " .. "version" ..  "(" .. currentversion ..  ") of " .. scriptname .. ". and are up to date!^0" )
                 end
             else
-                print("Error: Invalid response format from directory listing.")
+                print("^1Error: Invalid response format from directory listing.^0")
             end
         else
-            print("Error: Failed to list directory contents. HTTP Status Code: " .. statusCode)
+            print("^1Error: Failed to list directory contents. HTTP Status Code: " .. statusCode .. "^0")
         end
     end, "GET", "", {["Content-Type"] = "application/json"})
 end
