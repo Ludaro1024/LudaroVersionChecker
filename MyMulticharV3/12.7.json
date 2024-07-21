@@ -1,5 +1,5 @@
 {
-    "version": "13",
+    "version": "12.7",
     "changed_files": "file1.lua, file2.lua",
     "changelog": "Fixed bugs and added new features",
     "date": "2024-07-22"

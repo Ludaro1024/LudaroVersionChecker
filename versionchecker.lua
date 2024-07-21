@@ -7,56 +7,69 @@ if not repo or not scriptname or not currentversion then
     return
 end
 
--- Function to split a string by a given delimiter
-local function split(inputstr, sep)
-    if sep == nil then
-        sep = "%s"
-    end
-    local t = {}
-    for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-        table.insert(t, str)
-    end
-    return t
+-- Extract owner and repo name from the GitHub URL
+local owner, repoName = repo:match("https://github.com/([^/]+)/([^/]+)")
+
+if not owner or not repoName then
+    print("Error: Invalid GitHub repository URL.")
+    return
 end
 
 -- Function to perform the HTTP request and check for updates
-local function checkVersion(version)
-    local url = repo .. "/raw/main/" .. scriptname .. "/" .. version .. ".json"
-    
+local function checkVersion()
+    local url = "https://api.github.com/repos/" .. owner .. "/" .. repoName .. "/contents/" .. scriptname
+
     PerformHttpRequest(url, function(statusCode, response, headers)
         if statusCode == 200 then
-            local data = json.decode(response)
-            if data and data.version then
-                local latestVersion = tonumber(data.version)
-                if latestVersion and latestVersion > currentversion then
-                    print("Update available for " .. scriptname .. ":")
-                    print("  Current version: " .. currentversion)
-                    print("  Latest version: " .. latestVersion)
-                    print("  Changed files: " .. data.changed_files)
-                    print("  Changelog: " .. data.changelog)
-                    print("  Date: " .. data.date)
-                    currentversion = latestVersion
-                    -- Check the next version
-                    checkNextVersion()
+            local highestVersion = currentversion
+            local versionFiles = {}
+
+            local files = json.decode(response)
+            if files and type(files) == "table" then
+                for _, file in ipairs(files) do
+                    local version = tonumber(file.name:match("(%d+)%.json$"))
+                    if version then
+                        table.insert(versionFiles, version)
+                    end
+                end
+
+                -- Find the highest version
+                for _, version in ipairs(versionFiles) do
+                    if version > highestVersion then
+                        highestVersion = version
+                    end
+                end
+
+                if highestVersion > currentversion then
+                    local updateUrl = "https://raw.githubusercontent.com/" .. owner .. "/" .. repoName .. "/main/" .. scriptname .. "/" .. highestVersion .. ".json"
+                    PerformHttpRequest(updateUrl, function(updateStatusCode, updateResponse, updateHeaders)
+                        if updateStatusCode == 200 then
+                            local data = json.decode(updateResponse)
+                            if data then
+                                print("Update available for " .. scriptname .. ":")
+                                print("  Current version: " .. currentversion)
+                                print("  Latest version: " .. highestVersion)
+                                print("  Changed files: " .. data.changed_files)
+                                print("  Changelog: " .. data.changelog)
+                                print("  Date: " .. data.date)
+                            else
+                                print("Error: Invalid update details format.")
+                            end
+                        else
+                            print("Error: Failed to retrieve update details. HTTP Status Code: " .. updateStatusCode)
+                        end
+                    end, "GET", "", {["Content-Type"] = "application/json"})
                 else
-                    print(scriptname .. " is up to date. Current version: " .. currentversion)
+                    print("[MyScripts Updater] -- You are using the latest version of " .. scriptname .. ". and are up to date!")
                 end
             else
-                print("Error: Invalid response from version check.")
+                print("Error: Invalid response format from directory listing.")
             end
-        elseif statusCode == 404 then
-            print("[MyScripts Updater] -- You are using the latest version of " .. scriptname .. ". and are up To date!")
         else
-            print("Error: Failed to check version. HTTP Status Code: " .. statusCode)
+            print("Error: Failed to list directory contents. HTTP Status Code: " .. statusCode)
         end
     end, "GET", "", {["Content-Type"] = "application/json"})
 end
 
--- Check the next version
-local function checkNextVersion()
-    local nextVersion = currentversion + 1
-    checkVersion(nextVersion)
-end
-
--- Call the function to check the next version
-checkNextVersion()
+-- Call the function to check the version
+checkVersion()
